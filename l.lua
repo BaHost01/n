@@ -59,17 +59,62 @@ local function ApplyGradient(parent, color1, color2)
 	return grad
 end
 
--- Main Container
+-- [ FLOATING BALL (MINIMIZED WIDGET) ]
+local FloatingBall = Instance.new("TextButton")
+FloatingBall.Name = "FloatingBall"
+FloatingBall.Size = UDim2.new(0, 50, 0, 50)
+FloatingBall.Position = UDim2.new(0.5, -25, 0.1, 0)
+FloatingBall.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+FloatingBall.Text = "🔑"
+FloatingBall.TextSize = 20
+FloatingBall.Visible = false
+FloatingBall.AutoButtonColor = false
+Instance.new("UICorner", FloatingBall).CornerRadius = UDim.new(1, 0)
+ApplyGradient(FloatingBall, Color3.fromRGB(114, 137, 218), Color3.fromRGB(180, 130, 255))
+
+local BallStroke = Instance.new("UIStroke", FloatingBall)
+BallStroke.Thickness = 2
+BallStroke.Transparency = 0.5
+BallStroke.Color = Color3.fromRGB(255, 255, 255)
+
+local BallShadow = Instance.new("ImageLabel", FloatingBall)
+BallShadow.Size = UDim2.new(1.6, 0, 1.6, 0)
+BallShadow.Position = UDim2.new(0.5, 0, 0.5, 2)
+BallShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+BallShadow.BackgroundTransparency = 1
+BallShadow.Image = "rbxassetid://6015897843"
+BallShadow.ImageColor3 = Color3.new(0, 0, 0)
+BallShadow.ImageTransparency = 0.4
+BallShadow.ZIndex = -1
+FloatingBall.Parent = G
+
+-- Main Container Setup
+local MainCanvas = Instance.new("Frame")
+MainCanvas.Name = "MainCanvas"
+MainCanvas.AnchorPoint = Vector2.new(0.5, 0.5)
+MainCanvas.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainCanvas.Size = MAIN_SIZE 
+MainCanvas.BackgroundTransparency = 1
+MainCanvas.Parent = G
+
+-- Main Drop Shadow
+local MainShadow = Instance.new("ImageLabel", MainCanvas)
+MainShadow.Size = UDim2.new(1.15, 0, 1.15, 0)
+MainShadow.Position = UDim2.new(0.5, 0, 0.5, 5)
+MainShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+MainShadow.BackgroundTransparency = 1
+MainShadow.Image = "rbxassetid://6015897843"
+MainShadow.ImageColor3 = Color3.new(0, 0, 0)
+MainShadow.ImageTransparency = 0.4
+
 local Main = Instance.new("Frame")
 Main.Name = "Main"
-Main.AnchorPoint = Vector2.new(0.5, 0.5)
-Main.Position = UDim2.new(0.5, 0, 0.5, 0)
-Main.Size = MAIN_SIZE 
+Main.Size = UDim2.new(1, 0, 1, 0)
 Main.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
-ApplyGradient(Main, Color3.fromRGB(30, 30, 35), Color3.fromRGB(15, 15, 18))
-Main.Parent = G
+ApplyGradient(Main, Color3.fromRGB(25, 25, 30), Color3.fromRGB(12, 12, 15))
+Main.Parent = MainCanvas
 
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 12)
@@ -87,7 +132,7 @@ Top.Name = "Top"
 Top.Size = UDim2.new(1, 0, 0, TOPBAR_HEIGHT)
 Top.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 Top.BorderSizePixel = 0
-ApplyGradient(Top, Color3.fromRGB(40, 40, 45), Color3.fromRGB(20, 20, 25))
+ApplyGradient(Top, Color3.fromRGB(35, 35, 40), Color3.fromRGB(18, 18, 22))
 Top.Parent = Main
 
 local ScriptTitle = Instance.new("TextLabel")
@@ -124,6 +169,10 @@ Thumbnail.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Instance.new("UICorner", Thumbnail).CornerRadius = UDim.new(0, 8)
 Thumbnail.Parent = RightPanel
 
+local ThumbStroke = Instance.new("UIStroke", Thumbnail)
+ThumbStroke.Transparency = 0.8
+ThumbStroke.Color = Color3.fromRGB(255, 255, 255)
+
 -- [ LEFT PANEL: Auto-Layout Setup ]
 local LeftList = Instance.new("UIListLayout", LeftPanel)
 LeftList.Padding = UDim.new(0, isMobile and 6 or 10)
@@ -146,7 +195,6 @@ AttemptsText.Text = "Attempts: 0/" .. maxAttempts
 AttemptsText.TextColor3 = Color3.fromRGB(150, 150, 150)
 AttemptsText.Parent = LeftPanel
 
--- Input wrapper (Needed so ShakeUI works cleanly with UIListLayout)
 local InputWrapper = Instance.new("Frame")
 InputWrapper.Size = UDim2.new(1, -30, 0, BTN_HEIGHT)
 InputWrapper.BackgroundTransparency = 1
@@ -154,7 +202,7 @@ InputWrapper.Parent = LeftPanel
 
 local KeyInput = Instance.new("TextBox")
 KeyInput.Size = UDim2.new(1, 0, 1, 0)
-KeyInput.BackgroundColor3 = Color3.fromRGB(22, 22, 25)
+KeyInput.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 KeyInput.PlaceholderText = "Paste your key here..."
 KeyInput.Text = ""
 KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -187,7 +235,6 @@ local ValidateStroke = Instance.new("UIStroke", BtnValidate)
 ValidateStroke.Transparency = 0.7
 ValidateStroke.Color = Color3.fromRGB(255, 255, 255)
 
--- Fixed Discord Button (Uses Text & Gradients instead of Image for 100% visibility)
 local BtnDiscord = CreateButton(LeftPanel, "JOIN DISCORD", Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 255, 255))
 ApplyGradient(BtnDiscord, Color3.fromRGB(114, 137, 218), Color3.fromRGB(88, 101, 242))
 local DiscordStroke = Instance.new("UIStroke", BtnDiscord)
@@ -212,7 +259,44 @@ end
 
 local BtnClose = CreateCtrlButton("X", -35)
 local BtnMin = CreateCtrlButton("-", -65)
-local BtnShader = CreateCtrlButton("✨", -95) -- New Shader Toggle Button
+local BtnShader = CreateCtrlButton("✨", -95)
+
+-- [ TOGGLE LOGIC ]
+local function ToggleMinimize()
+	minimized = not minimized
+	if minimized then
+		TweenService:Create(MainCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+		task.wait(0.2)
+		MainCanvas.Visible = false
+		FloatingBall.Visible = true
+		FloatingBall.Size = UDim2.new(0, 0, 0, 0)
+		TweenService:Create(FloatingBall, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 50, 0, 50)}):Play()
+	else
+		TweenService:Create(FloatingBall, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+		task.wait(0.2)
+		FloatingBall.Visible = false
+		MainCanvas.Visible = true
+		TweenService:Create(MainCanvas, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = MAIN_SIZE}):Play()
+	end
+end
+
+-- Input detection for RightShift (PC Toggle)
+UIS.InputBegan:Connect(function(input, gpe)
+	if gpe then return end
+	if input.KeyCode == Enum.KeyCode.RightShift then
+		ToggleMinimize()
+	end
+end)
+
+FloatingBall.MouseButton1Click:Connect(function()
+	ClickSound:Play()
+	ToggleMinimize()
+end)
+
+BtnMin.MouseButton1Click:Connect(function()
+	ClickSound:Play()
+	ToggleMinimize()
+end)
 
 -- [ SHADER LOGIC ]
 local BlurEffect = Instance.new("BlurEffect")
@@ -266,7 +350,6 @@ local function ApplyHover(btn)
 	local originalColor = btn.BackgroundColor3
 	local targetColor
 	local h, s, v = Color3.toHSV(originalColor)
-	
 	if v > 0.5 then targetColor = Color3.fromHSV(h, s, v - 0.15)
 	else targetColor = Color3.fromHSV(h, s, v + 0.15) end 
 
@@ -278,7 +361,6 @@ local function ApplyHover(btn)
 		TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = originalColor}):Play()
 	end)
 	btn.MouseButton1Down:Connect(function()
-		ClickSound:Play()
 		TweenService:Create(btn, TweenInfo.new(0.1), {Size = UDim2.new(btn.Size.X.Scale, btn.Size.X.Offset - 4, btn.Size.Y.Scale, btn.Size.Y.Offset - 4)}):Play()
 	end)
 	btn.MouseButton1Up:Connect(function()
@@ -289,10 +371,10 @@ end
 local buttons = {BtnGetKey, BtnValidate, BtnDiscord, BtnMin, BtnClose, BtnShader}
 for _, btn in pairs(buttons) do ApplyHover(btn) end
 
--- Drag Logic (Draggable)
-local function MakeDraggable(topbar, object)
+-- [ DRAG LOGIC ]
+local function MakeDraggable(dragArea, object)
 	local dragging, dragInput, dragStart, startPos
-	topbar.InputBegan:Connect(function(input)
+	dragArea.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
 			dragStart = input.Position
@@ -302,7 +384,7 @@ local function MakeDraggable(topbar, object)
 			end)
 		end
 	end)
-	topbar.InputChanged:Connect(function(input)
+	dragArea.InputChanged:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 			dragInput = input
 		end
@@ -314,10 +396,12 @@ local function MakeDraggable(topbar, object)
 		end
 	end)
 end
-MakeDraggable(Top, Main)
+MakeDraggable(Top, MainCanvas)
+MakeDraggable(FloatingBall, FloatingBall)
 
 -- [ BUTTON EVENTS ]
 BtnDiscord.MouseButton1Click:Connect(function()
+	ClickSound:Play()
 	if setclipboard then
 		setclipboard("https://discord.gg/gJaG8ngsN2")
 		SetStatus("Discord link copied!", Color3.fromRGB(88, 101, 242))
@@ -325,6 +409,7 @@ BtnDiscord.MouseButton1Click:Connect(function()
 end)
 
 BtnGetKey.MouseButton1Click:Connect(function()
+	ClickSound:Play()
 	local ok, link = pcall(function() return J.get_key_link() end)
 	if ok and link and setclipboard then
 		setclipboard(link)
@@ -335,6 +420,7 @@ BtnGetKey.MouseButton1Click:Connect(function()
 end)
 
 BtnValidate.MouseButton1Click:Connect(function()
+	ClickSound:Play()
 	if closed or validated then return end
 
 	local key = KeyInput.Text
@@ -359,9 +445,9 @@ BtnValidate.MouseButton1Click:Connect(function()
 		
 		task.wait(0.8)
 		
-		-- Cleanup Shader & UI securely
+		-- Cleanup
 		TweenService:Create(BlurEffect, TweenInfo.new(0.5), {Size = 0}):Play()
-		TweenService:Create(Main, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Size = UDim2.new(0, MAIN_SIZE.X.Offset, 0, 0)}):Play()
+		TweenService:Create(MainCanvas, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)}):Play()
 		task.wait(0.5)
 		BlurEffect:Destroy()
 		G:Destroy()
@@ -382,16 +468,11 @@ BtnValidate.MouseButton1Click:Connect(function()
 	end
 end)
 
-BtnMin.MouseButton1Click:Connect(function()
-	minimized = not minimized
-	local targetSize = minimized and UDim2.new(0, MAIN_SIZE.X.Offset, 0, TOPBAR_HEIGHT) or MAIN_SIZE
-	TweenService:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = targetSize}):Play()
-end)
-
 BtnClose.MouseButton1Click:Connect(function()
-	TweenService:Create(Main, TweenInfo.new(0.2), {Size = UDim2.new(0, MAIN_SIZE.X.Offset, 0, 0)}):Play()
-	TweenService:Create(BlurEffect, TweenInfo.new(0.2), {Size = 0}):Play()
-	task.wait(0.2)
+	ClickSound:Play()
+	TweenService:Create(MainCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+	TweenService:Create(BlurEffect, TweenInfo.new(0.3), {Size = 0}):Play()
+	task.wait(0.3)
 	closed = true
 	BlurEffect:Destroy()
 	G:Destroy()
