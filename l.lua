@@ -15,7 +15,8 @@ local CoreGui = game:GetService("CoreGui")
 -- [ STATE VARIABLES ]
 local validated, closed, minimized = false, false, false
 local attempts, maxAttempts = 0, 5
-local thumb = "rbxthumb://type=PlaceId&id=" .. game.PlaceId .. "&w=768&h=432"
+-- FIXED: Changed "type=PlaceId" to "type=Asset"
+local thumb = "rbxthumb://type=Asset&id=" .. game.PlaceId .. "&w=768&h=432"
 
 -- [ CLEANUP OLD UI ]
 if CoreGui:FindFirstChild("PremiumKeyUI_Rework") then
@@ -45,7 +46,7 @@ local Main = Instance.new("Frame")
 Main.Name = "Main"
 Main.AnchorPoint = Vector2.new(0.5, 0.5)
 Main.Position = UDim2.new(0.5, 0, 0.5, 0)
-Main.Size = UDim2.new(0, 650, 0, 380) -- More compact and modern
+Main.Size = UDim2.new(0, 650, 0, 380) 
 Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
@@ -160,7 +161,7 @@ ValidateStroke.Color = Color3.fromRGB(255, 255, 255)
 local BtnDiscord = Instance.new("ImageButton")
 BtnDiscord.Size = UDim2.new(0, 40, 0, 40)
 BtnDiscord.Position = UDim2.new(0, 15, 0, 240)
-BtnDiscord.BackgroundColor3 = Color3.fromRGB(88, 101, 242) -- Official Discord Color
+BtnDiscord.BackgroundColor3 = Color3.fromRGB(88, 101, 242) 
 BtnDiscord.Image = "rbxassetid://18505728250"
 Instance.new("UICorner", BtnDiscord).CornerRadius = UDim.new(0, 6)
 BtnDiscord.Parent = LeftPanel
@@ -183,7 +184,7 @@ end
 
 local BtnMin = CreateCtrlButton("-", -65)
 local BtnClose = CreateCtrlButton("X", -35)
-BtnClose.HoverImage = "" -- Fallback prevent
+-- FIXED: Removed BtnClose.HoverImage = ""
 
 -- [ ANIMATIONS AND FEATURES ]
 
@@ -212,8 +213,8 @@ local function ApplyHover(btn)
 	local targetColor
 	local h, s, v = Color3.toHSV(originalColor)
 	
-	if v > 0.5 then targetColor = Color3.fromHSV(h, s, v - 0.15) -- Darken if it's light
-	else targetColor = Color3.fromHSV(h, s, v + 0.15) end -- Lighten if it's dark
+	if v > 0.5 then targetColor = Color3.fromHSV(h, s, v - 0.15)
+	else targetColor = Color3.fromHSV(h, s, v + 0.15) end 
 
 	btn.MouseEnter:Connect(function()
 		HoverSound:Play()
