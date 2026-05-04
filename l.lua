@@ -154,6 +154,7 @@ function UniversalLib.StartUserScript(callback)
 	J.provider = UniversalLib.Config.Provider
 
 	-- Auto-Load and Verify Key Logic
+	local preloadedKey = ""
 	if UniversalLib.Config.AutoLoadKey and isfile and readfile then
 		local fileName = GetKeyFileName()
 		if isfile(fileName) then
@@ -438,7 +439,7 @@ function UniversalLib.StartUserScript(callback)
 	KeyInput.Size = UDim2.new(1, 0, 1, 0)
 	KeyInput.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 	KeyInput.PlaceholderText = "Paste your key here..."
-	KeyInput.Text = ""
+	KeyInput.Text = preloadedKey
 	KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 	KeyInput.Font = Enum.Font.Gotham
 	KeyInput.TextSize = 13
@@ -820,6 +821,7 @@ function UniversalLib:CreateWindow(config)
 		else
 			if Window.RGBConnection then Window.RGBConnection:Disconnect() end
 			TweenService:Create(MainStroke, TweenInfo.new(0.5), {Color = Color3.fromRGB(255, 255, 255)}):Play()
+			TweenService:Create(BallStroke, TweenInfo.new(0.5), {Color = Color3.fromRGB(255, 255, 255)}):Play()
 		end
 	end)
 	CreateInternalToggle(SettingsOverlay, "UI Shadows", false, function(s) TweenService:Create(MainShadow, TweenInfo.new(0.3), {ImageTransparency = s and 0.4 or 1}):Play() end)
@@ -916,7 +918,7 @@ function UniversalLib:CreateWindow(config)
 		ContainerList.Padding = UDim.new(0, 8)
 		ContainerList.SortOrder = Enum.SortOrder.LayoutOrder
 
-		ContainerList.GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+		ContainerList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
 			TabContainer.CanvasSize = UDim2.new(0, 0, 0, ContainerList.AbsoluteContentSize.Y + 10)
 		end)
 
