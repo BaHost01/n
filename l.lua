@@ -11,11 +11,17 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
+local Lighting = game:GetService("Lighting")
+
+-- [ DEVICE DETECTION ]
+local isMobile = UIS.TouchEnabled and not UIS.MouseEnabled
+local MAIN_SIZE = isMobile and UDim2.new(0, 500, 0, 320) or UDim2.new(0, 650, 0, 380)
+local TOPBAR_HEIGHT = isMobile and 35 or 45
+local BTN_HEIGHT = isMobile and 35 or 40
 
 -- [ STATE VARIABLES ]
-local validated, closed, minimized = false, false, false
+local validated, closed, minimized, shaderEnabled = false, false, false, false
 local attempts, maxAttempts = 0, 5
--- FIXED: Changed "type=PlaceId" to "type=Asset"
 local thumb = "rbxthumb://type=Asset&id=" .. game.PlaceId .. "&w=768&h=432"
 
 -- [ CLEANUP OLD UI ]
@@ -41,15 +47,28 @@ local HoverSound = CreateSound("140404505414006", 0.35)
 local ClickSound = CreateSound("140387697208266", 0.45)
 local SuccessSound = CreateSound("140072726814802", 0.55)
 
--- Main Containers
+-- Utility function for Gradients
+local function ApplyGradient(parent, color1, color2)
+	local grad = Instance.new("UIGradient")
+	grad.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, color1),
+		ColorSequenceKeypoint.new(1, color2)
+	}
+	grad.Rotation = 45
+	grad.Parent = parent
+	return grad
+end
+
+-- Main Container
 local Main = Instance.new("Frame")
 Main.Name = "Main"
 Main.AnchorPoint = Vector2.new(0.5, 0.5)
 Main.Position = UDim2.new(0.5, 0, 0.5, 0)
-Main.Size = UDim2.new(0, 650, 0, 380) 
-Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Main.Size = MAIN_SIZE 
+Main.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
+ApplyGradient(Main, Color3.fromRGB(30, 30, 35), Color3.fromRGB(15, 15, 18))
 Main.Parent = G
 
 local MainCorner = Instance.new("UICorner")
@@ -58,15 +77,17 @@ MainCorner.Parent = Main
 
 local MainStroke = Instance.new("UIStroke")
 MainStroke.Transparency = 0.8
+MainStroke.Thickness = 1
 MainStroke.Color = Color3.fromRGB(255, 255, 255)
 MainStroke.Parent = Main
 
 -- Top Bar
 local Top = Instance.new("Frame")
 Top.Name = "Top"
-Top.Size = UDim2.new(1, 0, 0, 45)
-Top.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Top.Size = UDim2.new(1, 0, 0, TOPBAR_HEIGHT)
+Top.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 Top.BorderSizePixel = 0
+ApplyGradient(Top, Color3.fromRGB(40, 40, 45), Color3.fromRGB(20, 20, 25))
 Top.Parent = Main
 
 local ScriptTitle = Instance.new("TextLabel")
@@ -75,7 +96,7 @@ ScriptTitle.Position = UDim2.new(0, 15, 0, 0)
 ScriptTitle.BackgroundTransparency = 1
 ScriptTitle.Text = SCRIPT_NAME .. " <font color='rgb(150,150,150)'>| " .. game.Name .. "</font>"
 ScriptTitle.Font = Enum.Font.GothamBold
-ScriptTitle.TextSize = 14
+ScriptTitle.TextSize = isMobile and 12 or 14
 ScriptTitle.RichText = true
 ScriptTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
 ScriptTitle.TextXAlignment = Enum.TextXAlignment.Left
@@ -83,14 +104,14 @@ ScriptTitle.Parent = Top
 
 -- Split Main Layout
 local LeftPanel = Instance.new("Frame")
-LeftPanel.Size = UDim2.new(0.45, 0, 1, -45)
-LeftPanel.Position = UDim2.new(0, 0, 0, 45)
+LeftPanel.Size = UDim2.new(0.45, 0, 1, -TOPBAR_HEIGHT)
+LeftPanel.Position = UDim2.new(0, 0, 0, TOPBAR_HEIGHT)
 LeftPanel.BackgroundTransparency = 1
 LeftPanel.Parent = Main
 
 local RightPanel = Instance.new("Frame")
-RightPanel.Size = UDim2.new(0.55, 0, 1, -45)
-RightPanel.Position = UDim2.new(0.45, 0, 0, 45)
+RightPanel.Size = UDim2.new(0.55, 0, 1, -TOPBAR_HEIGHT)
+RightPanel.Position = UDim2.new(0.45, 0, 0, TOPBAR_HEIGHT)
 RightPanel.BackgroundTransparency = 1
 RightPanel.Parent = Main
 
@@ -103,75 +124,82 @@ Thumbnail.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Instance.new("UICorner", Thumbnail).CornerRadius = UDim.new(0, 8)
 Thumbnail.Parent = RightPanel
 
--- Left Panel Components
+-- [ LEFT PANEL: Auto-Layout Setup ]
+local LeftList = Instance.new("UIListLayout", LeftPanel)
+LeftList.Padding = UDim.new(0, isMobile and 6 or 10)
+LeftList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+LeftList.VerticalAlignment = Enum.VerticalAlignment.Center
+
+-- Components
 local StatusText = Instance.new("TextLabel")
 StatusText.Size = UDim2.new(1, -30, 0, 20)
-StatusText.Position = UDim2.new(0, 15, 0, 15)
 StatusText.BackgroundTransparency = 1
 StatusText.Text = "Status: Waiting..."
 StatusText.Font = Enum.Font.GothamMedium
-StatusText.TextSize = 13
+StatusText.TextSize = isMobile and 11 or 13
 StatusText.TextColor3 = Color3.fromRGB(200, 200, 200)
 StatusText.TextXAlignment = Enum.TextXAlignment.Left
 StatusText.Parent = LeftPanel
 
 local AttemptsText = StatusText:Clone()
-AttemptsText.Position = UDim2.new(0, 15, 0, 35)
 AttemptsText.Text = "Attempts: 0/" .. maxAttempts
 AttemptsText.TextColor3 = Color3.fromRGB(150, 150, 150)
 AttemptsText.Parent = LeftPanel
 
+-- Input wrapper (Needed so ShakeUI works cleanly with UIListLayout)
+local InputWrapper = Instance.new("Frame")
+InputWrapper.Size = UDim2.new(1, -30, 0, BTN_HEIGHT)
+InputWrapper.BackgroundTransparency = 1
+InputWrapper.Parent = LeftPanel
+
 local KeyInput = Instance.new("TextBox")
-KeyInput.Size = UDim2.new(1, -30, 0, 40)
-KeyInput.Position = UDim2.new(0, 15, 0, 80)
-KeyInput.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+KeyInput.Size = UDim2.new(1, 0, 1, 0)
+KeyInput.BackgroundColor3 = Color3.fromRGB(22, 22, 25)
 KeyInput.PlaceholderText = "Paste your key here..."
 KeyInput.Text = ""
 KeyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
 KeyInput.Font = Enum.Font.Gotham
-KeyInput.TextSize = 14
+KeyInput.TextSize = isMobile and 12 or 14
 Instance.new("UICorner", KeyInput).CornerRadius = UDim.new(0, 6)
 local KeyStroke = Instance.new("UIStroke", KeyInput)
 KeyStroke.Transparency = 0.8
 KeyStroke.Color = Color3.fromRGB(255, 255, 255)
-KeyInput.Parent = LeftPanel
+KeyInput.Parent = InputWrapper
 
 -- UI Helper Functions
-local function CreateButton(parent, text, yPos, bgColor, txtColor)
+local function CreateButton(parent, text, bgColor, txtColor)
 	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(1, -30, 0, 40)
-	btn.Position = UDim2.new(0, 15, 0, yPos)
+	btn.Size = UDim2.new(1, -30, 0, BTN_HEIGHT)
 	btn.BackgroundColor3 = bgColor
 	btn.Text = text
 	btn.TextColor3 = txtColor
 	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 14
+	btn.TextSize = isMobile and 12 or 14
 	btn.AutoButtonColor = false
 	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 	btn.Parent = parent
 	return btn
 end
 
-local BtnGetKey = CreateButton(LeftPanel, "GET KEY", 135, Color3.fromRGB(255, 255, 255), Color3.fromRGB(15, 15, 15))
-local BtnValidate = CreateButton(LeftPanel, "VALIDATE", 185, Color3.fromRGB(30, 30, 30), Color3.fromRGB(255, 255, 255))
+local BtnGetKey = CreateButton(LeftPanel, "GET KEY", Color3.fromRGB(255, 255, 255), Color3.fromRGB(15, 15, 15))
+local BtnValidate = CreateButton(LeftPanel, "VALIDATE", Color3.fromRGB(40, 40, 45), Color3.fromRGB(255, 255, 255))
 local ValidateStroke = Instance.new("UIStroke", BtnValidate)
 ValidateStroke.Transparency = 0.7
 ValidateStroke.Color = Color3.fromRGB(255, 255, 255)
 
-local BtnDiscord = Instance.new("ImageButton")
-BtnDiscord.Size = UDim2.new(0, 40, 0, 40)
-BtnDiscord.Position = UDim2.new(0, 15, 0, 240)
-BtnDiscord.BackgroundColor3 = Color3.fromRGB(88, 101, 242) 
-BtnDiscord.Image = "rbxassetid://18505728250"
-Instance.new("UICorner", BtnDiscord).CornerRadius = UDim.new(0, 6)
-BtnDiscord.Parent = LeftPanel
+-- Fixed Discord Button (Uses Text & Gradients instead of Image for 100% visibility)
+local BtnDiscord = CreateButton(LeftPanel, "JOIN DISCORD", Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 255, 255))
+ApplyGradient(BtnDiscord, Color3.fromRGB(114, 137, 218), Color3.fromRGB(88, 101, 242))
+local DiscordStroke = Instance.new("UIStroke", BtnDiscord)
+DiscordStroke.Transparency = 0.5
+DiscordStroke.Color = Color3.fromRGB(88, 101, 242)
 
--- Control Buttons (Close/Minimize)
+-- Control Buttons
 local function CreateCtrlButton(text, xPos)
 	local btn = Instance.new("TextButton")
 	btn.Size = UDim2.new(0, 25, 0, 25)
-	btn.Position = UDim2.new(1, xPos, 0, 10)
-	btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	btn.Position = UDim2.new(1, xPos, 0, (TOPBAR_HEIGHT - 25) / 2)
+	btn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
 	btn.Text = text
 	btn.TextColor3 = Color3.fromRGB(200, 200, 200)
 	btn.Font = Enum.Font.GothamBold
@@ -182,12 +210,38 @@ local function CreateCtrlButton(text, xPos)
 	return btn
 end
 
-local BtnMin = CreateCtrlButton("-", -65)
 local BtnClose = CreateCtrlButton("X", -35)
--- FIXED: Removed BtnClose.HoverImage = ""
+local BtnMin = CreateCtrlButton("-", -65)
+local BtnShader = CreateCtrlButton("✨", -95) -- New Shader Toggle Button
+
+-- [ SHADER LOGIC ]
+local BlurEffect = Instance.new("BlurEffect")
+BlurEffect.Size = 0
+BlurEffect.Parent = Lighting
+
+BtnShader.MouseButton1Click:Connect(function()
+	ClickSound:Play()
+	shaderEnabled = not shaderEnabled
+	
+	if shaderEnabled then
+		TweenService:Create(BlurEffect, TweenInfo.new(0.5), {Size = 15}):Play()
+		TweenService:Create(MainStroke, TweenInfo.new(0.5), {
+			Color = Color3.fromRGB(180, 130, 255), 
+			Thickness = 2, 
+			Transparency = 0
+		}):Play()
+	else
+		TweenService:Create(BlurEffect, TweenInfo.new(0.5), {Size = 0}):Play()
+		TweenService:Create(MainStroke, TweenInfo.new(0.5), {
+			Color = Color3.fromRGB(255, 255, 255), 
+			Thickness = 1, 
+			Transparency = 0.8
+		}):Play()
+	end
+end)
+
 
 -- [ ANIMATIONS AND FEATURES ]
-
 local function SetStatus(text, color)
 	StatusText.Text = "Status: " .. text
 	if color then
@@ -232,7 +286,7 @@ local function ApplyHover(btn)
 	end)
 end
 
-local buttons = {BtnGetKey, BtnValidate, BtnDiscord, BtnMin, BtnClose}
+local buttons = {BtnGetKey, BtnValidate, BtnDiscord, BtnMin, BtnClose, BtnShader}
 for _, btn in pairs(buttons) do ApplyHover(btn) end
 
 -- Drag Logic (Draggable)
@@ -263,7 +317,6 @@ end
 MakeDraggable(Top, Main)
 
 -- [ BUTTON EVENTS ]
-
 BtnDiscord.MouseButton1Click:Connect(function()
 	if setclipboard then
 		setclipboard("https://discord.gg/gJaG8ngsN2")
@@ -275,7 +328,7 @@ BtnGetKey.MouseButton1Click:Connect(function()
 	local ok, link = pcall(function() return J.get_key_link() end)
 	if ok and link and setclipboard then
 		setclipboard(link)
-		SetStatus("Key link copied to clipboard!", Color3.fromRGB(85, 255, 127))
+		SetStatus("Key link copied!", Color3.fromRGB(85, 255, 127))
 	else
 		SetStatus("Failed to get key link.", Color3.fromRGB(255, 85, 85))
 	end
@@ -306,8 +359,11 @@ BtnValidate.MouseButton1Click:Connect(function()
 		
 		task.wait(0.8)
 		
-		TweenService:Create(Main, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Size = UDim2.new(0, 650, 0, 0)}):Play()
+		-- Cleanup Shader & UI securely
+		TweenService:Create(BlurEffect, TweenInfo.new(0.5), {Size = 0}):Play()
+		TweenService:Create(Main, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {Size = UDim2.new(0, MAIN_SIZE.X.Offset, 0, 0)}):Play()
 		task.wait(0.5)
+		BlurEffect:Destroy()
 		G:Destroy()
 		return
 	end
@@ -320,20 +376,24 @@ BtnValidate.MouseButton1Click:Connect(function()
 		SetStatus("Max attempts reached.", Color3.fromRGB(255, 85, 85))
 		task.wait(1)
 		closed = true
+		TweenService:Create(BlurEffect, TweenInfo.new(0.3), {Size = 0}):Play()
+		task.delay(0.3, function() BlurEffect:Destroy() end)
 		G:Destroy()
 	end
 end)
 
 BtnMin.MouseButton1Click:Connect(function()
 	minimized = not minimized
-	local targetSize = minimized and UDim2.new(0, 650, 0, 45) or UDim2.new(0, 650, 0, 380)
+	local targetSize = minimized and UDim2.new(0, MAIN_SIZE.X.Offset, 0, TOPBAR_HEIGHT) or MAIN_SIZE
 	TweenService:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = targetSize}):Play()
 end)
 
 BtnClose.MouseButton1Click:Connect(function()
-	TweenService:Create(Main, TweenInfo.new(0.2), {Size = UDim2.new(0, 650, 0, 0)}):Play()
+	TweenService:Create(Main, TweenInfo.new(0.2), {Size = UDim2.new(0, MAIN_SIZE.X.Offset, 0, 0)}):Play()
+	TweenService:Create(BlurEffect, TweenInfo.new(0.2), {Size = 0}):Play()
 	task.wait(0.2)
 	closed = true
+	BlurEffect:Destroy()
 	G:Destroy()
 end)
 
