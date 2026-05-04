@@ -44,7 +44,7 @@ local function WriteKeyToFile(key)
 end
 
 -- ==========================================
--- [ SERVICES & DEVICE INFO ]
+-- [ ROBLOX SERVICES & DEVICE INFO ]
 -- ==========================================
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -95,6 +95,53 @@ local function CreateCircleShadow(parent, sizeMulti, transparency)
 end
 
 -- ==========================================
+-- [ INTERFACE CORE ]
+-- ==========================================
+
+local function CreateInternalToggle(parent, text, defaultState, callback, ClickSound)
+	local TglFrame = Instance.new("Frame", parent)
+	TglFrame.Size = UDim2.new(1, -20, 0, 35)
+	TglFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+	TglFrame.ZIndex = parent.ZIndex + 1
+	Instance.new("UICorner", TglFrame).CornerRadius = UDim.new(0, 6)
+
+	local TglText = Instance.new("TextLabel", TglFrame)
+	TglText.Size = UDim2.new(0.7, 0, 1, 0)
+	TglText.Position = UDim2.new(0, 10, 0, 0)
+	TglText.BackgroundTransparency = 1
+	TglText.Text = text
+	TglText.Font = Enum.Font.GothamMedium
+	TglText.TextSize = 12
+	TglText.TextColor3 = Color3.fromRGB(200, 200, 200)
+	TglText.TextXAlignment = Enum.TextXAlignment.Left
+	TglText.ZIndex = TglFrame.ZIndex
+
+	local TglBtn = Instance.new("TextButton", TglFrame)
+	TglBtn.Size = UDim2.new(0, 40, 0, 20)
+	TglBtn.Position = UDim2.new(1, -50, 0.5, -10)
+	TglBtn.BackgroundColor3 = defaultState and Color3.fromRGB(114, 137, 218) or Color3.fromRGB(80, 80, 80)
+	TglBtn.Text = ""
+	TglBtn.ZIndex = TglFrame.ZIndex
+	Instance.new("UICorner", TglBtn).CornerRadius = UDim.new(1, 0)
+
+	local Indicator = Instance.new("Frame", TglBtn)
+	Indicator.Size = UDim2.new(0, 16, 0, 16)
+	Indicator.Position = UDim2.new(0, defaultState and 22 or 2, 0.5, -8)
+	Indicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	Indicator.ZIndex = TglBtn.ZIndex
+	Instance.new("UICorner", Indicator).CornerRadius = UDim.new(1, 0)
+
+	local state = defaultState
+	TglBtn.MouseButton1Click:Connect(function()
+		if ClickSound then ClickSound:Play() end
+		state = not state
+		TweenService:Create(TglBtn, TweenInfo.new(0.3), {BackgroundColor3 = state and Color3.fromRGB(114, 137, 218) or Color3.fromRGB(80, 80, 80)}):Play()
+		TweenService:Create(Indicator, TweenInfo.new(0.3), {Position = UDim2.new(0, state and 22 or 2, 0.5, -8)}):Play()
+		callback(state)
+	end)
+end
+
+-- ==========================================
 -- [ KEY SYSTEM GATEWAY ]
 -- ==========================================
 function UniversalLib.StartUserScript(callback)
@@ -137,19 +184,6 @@ function UniversalLib.StartUserScript(callback)
 	local ClickSound = CreateSound(G, "140387697208266", 0.45)
 	local SuccessSound = CreateSound(G, "140072726814802", 0.55)
 
-	local GatewayState = { Minimized = false, SettingsOpen = false, StreamerMode = false, isWindowFocused = true, RGBConnection = nil }
-
-	local FloatingBall = Instance.new("TextButton", G)
-	FloatingBall.Size = UDim2.new(0, 50, 0, 50)
-	FloatingBall.Position = UDim2.new(0.5, -25, 0.1, 0)
-	FloatingBall.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	FloatingBall.Text = "🔑"
-	FloatingBall.TextSize = 20
-	FloatingBall.Visible = false
-	Instance.new("UICorner", FloatingBall).CornerRadius = UDim.new(1, 0)
-	ApplyGradient(FloatingBall, Color3.fromRGB(114, 137, 218), Color3.fromRGB(180, 130, 255))
-	CreateCircleShadow(FloatingBall, 1.2, 0.7)
-
 	local MainCanvas = Instance.new("Frame", G)
 	MainCanvas.AnchorPoint = Vector2.new(0.5, 0.5)
 	MainCanvas.Size = isMobile and UDim2.new(0, 500, 0, 320) or UDim2.new(0, 650, 0, 380)
@@ -181,29 +215,23 @@ function UniversalLib.StartUserScript(callback)
 	TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 	TitleText.TextXAlignment = Enum.TextXAlignment.Left
 
-	local function CreateCtrlButton(text, xPos)
-		local btn = Instance.new("TextButton", Top)
-		btn.Size = UDim2.new(0, 25, 0, 25)
-		btn.Position = UDim2.new(1, xPos, 0, (Top.Size.Y.Offset - 25) / 2)
-		btn.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-		btn.Text = text
-		btn.TextColor3 = Color3.fromRGB(200, 200, 200)
-		btn.Font = Enum.Font.GothamBold
-		btn.TextSize = 14
-		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-		return btn
-	end
-
-	local BtnClose = CreateCtrlButton("X", -35)
-	local BtnMin = CreateCtrlButton("-", -65)
+	local BtnClose = Instance.new("TextButton", Top)
+	BtnClose.Size = UDim2.new(0, 25, 0, 25)
+	BtnClose.Position = UDim2.new(1, -35, 0.5, -12)
+	BtnClose.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+	BtnClose.Text = "X"
+	BtnClose.TextColor3 = Color3.fromRGB(200, 200, 200)
+	BtnClose.Font = Enum.Font.GothamBold
+	Instance.new("UICorner", BtnClose).CornerRadius = UDim.new(0, 4)
 
 	local LeftPanel = Instance.new("Frame", Main)
 	LeftPanel.Size = UDim2.new(0.45, 0, 1, -Top.Size.Y.Offset)
 	LeftPanel.Position = UDim2.new(0, 0, 0, Top.Size.Y.Offset)
 	LeftPanel.BackgroundTransparency = 1
-	Instance.new("UIListLayout", LeftPanel).Padding = UDim.new(0, 10)
-	LeftPanel.UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	LeftPanel.UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	local LeftList = Instance.new("UIListLayout", LeftPanel)
+	LeftList.Padding = UDim.new(0, 10)
+	LeftList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	LeftList.VerticalAlignment = Enum.VerticalAlignment.Center
 
 	local StatusText = Instance.new("TextLabel", LeftPanel)
 	StatusText.Size = UDim2.new(1, -30, 0, 20)
@@ -221,9 +249,6 @@ function UniversalLib.StartUserScript(callback)
 	KeyInput.Font = Enum.Font.Gotham
 	KeyInput.TextSize = 13
 	Instance.new("UICorner", KeyInput).CornerRadius = UDim.new(0, 6)
-	local KeyStroke = Instance.new("UIStroke", KeyInput)
-	KeyStroke.Color = Color3.fromRGB(255, 255, 255)
-	KeyStroke.Transparency = 0.8
 
 	local BtnValidate = Instance.new("TextButton", LeftPanel)
 	BtnValidate.Size = UDim2.new(1, -30, 0, 40)
@@ -262,7 +287,7 @@ function UniversalLib:CreateWindow(config)
 	local subtitle = config.Subtitle or "Universal"
 	local toggleKey = config.ToggleKey or Enum.KeyCode.RightShift
 
-	local Window = { ActiveTab = nil, Minimized = false, SettingsOpen = false, RGBConnection = nil }
+	local Window = { ActiveTab = nil, Minimized = false, SettingsOpen = false, RGBConnection = nil, StreamerMode = false, isWindowFocused = true }
 
 	local G = Instance.new("ScreenGui")
 	G.Name = "UniversalLib_Hub_" .. title
@@ -274,7 +299,6 @@ function UniversalLib:CreateWindow(config)
 	local HoverSound = CreateSound(G, "140404505414006", 0.35)
 	local ClickSound = CreateSound(G, "140387697208266", 0.45)
 
-	-- Floating Ball
 	local FloatingBall = Instance.new("TextButton", G)
 	FloatingBall.Size = UDim2.new(0, 50, 0, 50)
 	FloatingBall.Position = UDim2.new(0.5, -25, 0.1, 0)
@@ -291,6 +315,15 @@ function UniversalLib:CreateWindow(config)
 	MainCanvas.Size = isMobile and UDim2.new(0, 500, 0, 320) or UDim2.new(0, 650, 0, 380)
 	MainCanvas.Position = UDim2.new(0.5, 0, 0.5, 0)
 	MainCanvas.BackgroundTransparency = 1
+
+	local MainShadow = Instance.new("ImageLabel", MainCanvas)
+	MainShadow.Size = UDim2.new(1.15, 0, 1.15, 0)
+	MainShadow.Position = UDim2.new(0.5, 0, 0.5, 5)
+	MainShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+	MainShadow.BackgroundTransparency = 1
+	MainShadow.Image = "rbxassetid://6015897843"
+	MainShadow.ImageColor3 = Color3.new(0, 0, 0)
+	MainShadow.ImageTransparency = 1 
 
 	local Main = Instance.new("Frame", MainCanvas)
 	Main.Size = UDim2.new(1, 0, 1, 0)
@@ -352,7 +385,7 @@ function UniversalLib:CreateWindow(config)
 	SettingsOverlay.Size = UDim2.new(0.7, -20, 1, -Top.Size.Y.Offset - 20)
 	SettingsOverlay.Position = UDim2.new(1, 10, 0, Top.Size.Y.Offset + 10) 
 	SettingsOverlay.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
-	SettingsOverlay.ZIndex = 100 -- STAY ON TOP
+	SettingsOverlay.ZIndex = 500 -- HIGHEST PRIORITY
 	SettingsOverlay.ScrollBarThickness = 2
 	Instance.new("UICorner", SettingsOverlay).CornerRadius = UDim.new(0, 8)
 	Instance.new("UIStroke", SettingsOverlay).Color = Color3.fromRGB(60, 60, 70)
@@ -362,52 +395,9 @@ function UniversalLib:CreateWindow(config)
 	SetList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	Instance.new("UIPadding", SettingsOverlay).PaddingTop = UDim.new(0, 10)
 
-	local function CreateInternalToggle(parent, text, defaultState, callback)
-		local TglFrame = Instance.new("Frame", parent)
-		TglFrame.Size = UDim2.new(1, -20, 0, 35)
-		TglFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
-		TglFrame.ZIndex = parent.ZIndex + 1
-		Instance.new("UICorner", TglFrame).CornerRadius = UDim.new(0, 6)
-
-		local TglText = Instance.new("TextLabel", TglFrame)
-		TglText.Size = UDim2.new(0.7, 0, 1, 0)
-		TglText.Position = UDim2.new(0, 10, 0, 0)
-		TglText.BackgroundTransparency = 1
-		TglText.Text = text
-		TglText.Font = Enum.Font.GothamMedium
-		TglText.TextSize = 12
-		TglText.TextColor3 = Color3.fromRGB(200, 200, 200)
-		TglText.TextXAlignment = Enum.TextXAlignment.Left
-		TglText.ZIndex = TglFrame.ZIndex
-
-		local TglBtn = Instance.new("TextButton", TglFrame)
-		TglBtn.Size = UDim2.new(0, 40, 0, 20)
-		TglBtn.Position = UDim2.new(1, -50, 0.5, -10)
-		TglBtn.BackgroundColor3 = defaultState and Color3.fromRGB(114, 137, 218) or Color3.fromRGB(80, 80, 80)
-		TglBtn.Text = ""
-		TglBtn.ZIndex = TglFrame.ZIndex
-		Instance.new("UICorner", TglBtn).CornerRadius = UDim.new(1, 0)
-
-		local Indicator = Instance.new("Frame", TglBtn)
-		Indicator.Size = UDim2.new(0, 16, 0, 16)
-		Indicator.Position = UDim2.new(0, defaultState and 22 or 2, 0.5, -8)
-		Indicator.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		Indicator.ZIndex = TglBtn.ZIndex
-		Instance.new("UICorner", Indicator).CornerRadius = UDim.new(1, 0)
-
-		local state = defaultState
-		TglBtn.MouseButton1Click:Connect(function()
-			ClickSound:Play()
-			state = not state
-			TweenService:Create(TglBtn, TweenInfo.new(0.3), {BackgroundColor3 = state and Color3.fromRGB(114, 137, 218) or Color3.fromRGB(80, 80, 80)}):Play()
-			TweenService:Create(Indicator, TweenInfo.new(0.3), {Position = UDim2.new(0, state and 22 or 2, 0.5, -8)}):Play()
-			callback(state)
-		end)
-	end
-
 	-- PUBLIC SETTINGS API
 	function Window:AddSettingToggle(text, default, callback)
-		CreateInternalToggle(SettingsOverlay, text, default, callback)
+		CreateInternalToggle(SettingsOverlay, text, default, callback, ClickSound)
 	end
 
 	function Window:AddSettingButton(text, callback)
@@ -423,13 +413,22 @@ function UniversalLib:CreateWindow(config)
 		Btn.MouseButton1Click:Connect(function() ClickSound:Play(); callback() end)
 	end
 
-	-- Default Toggles
-	Window:AddSettingToggle("RGB Mode", false, function(s)
+	-- DEFAULT SETTINGS
+	local BlurEffect = Instance.new("BlurEffect", Lighting)
+	BlurEffect.Size = 0
+
+	Window:AddSettingToggle("Background Blur", false, function(s)
+		TweenService:Create(BlurEffect, TweenInfo.new(0.5), {Size = s and 15 or 0}):Play()
+	end)
+
+	Window:AddSettingToggle("RGB UI Mode", false, function(s)
 		if s then
 			local hue = 0
 			Window.RGBConnection = RunService.RenderStepped:Connect(function(dt)
 				hue = (hue + dt * 0.1) % 1
-				MainStroke.Color = Color3.fromHSV(hue, 0.8, 1)
+				local col = Color3.fromHSV(hue, 0.8, 1)
+				MainStroke.Color = col
+				if FloatingBall:FindFirstChild("UIStroke") then FloatingBall.UIStroke.Color = col end
 			end)
 		else
 			if Window.RGBConnection then Window.RGBConnection:Disconnect() end
@@ -437,14 +436,19 @@ function UniversalLib:CreateWindow(config)
 		end
 	end)
 
+	Window:AddSettingToggle("UI Shadows", false, function(s)
+		TweenService:Create(MainShadow, TweenInfo.new(0.3), {ImageTransparency = s and 0.4 or 1}):Play()
+	end)
+
+	-- Settings Toggle Animation
 	BtnSettings.MouseButton1Click:Connect(function()
 		ClickSound:Play()
 		Window.SettingsOpen = not Window.SettingsOpen
 		local targetPos = Window.SettingsOpen and UDim2.new(0.3, 10, 0, Top.Size.Y.Offset + 10) or UDim2.new(1, 10, 0, Top.Size.Y.Offset + 10)
-		TweenService:Create(SettingsOverlay, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {Position = targetPos}):Play()
+		TweenService:Create(SettingsOverlay, TweenInfo.new(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Position = targetPos}):Play()
 	end)
 
-	-- Tab & Drag Setup (Simplified for syntax verification)
+	-- Dragging Logic
 	local function MakeDraggable(dragArea, object)
 		local dragging, dragInput, dragStart, startPos
 		dragArea.InputBegan:Connect(function(input)
@@ -461,7 +465,38 @@ function UniversalLib:CreateWindow(config)
 		end)
 	end
 	MakeDraggable(Top, MainCanvas)
+	MakeDraggable(FloatingBall, FloatingBall)
 
+	-- Minimizing Logic
+	local function ToggleMinimize()
+		Window.Minimized = not Window.Minimized
+		if Window.Minimized then
+			TweenService:Create(MainCanvas, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+			task.wait(0.2)
+			MainCanvas.Visible = false
+			FloatingBall.Visible = true
+			FloatingBall.Size = UDim2.new(0, 0, 0, 0)
+			TweenService:Create(FloatingBall, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 50, 0, 50)}):Play()
+		else
+			TweenService:Create(FloatingBall, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Size = UDim2.new(0, 0, 0, 0)}):Play()
+			task.wait(0.2)
+			FloatingBall.Visible = false
+			MainCanvas.Visible = true
+			TweenService:Create(MainCanvas, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = isMobile and UDim2.new(0, 500, 0, 320) or UDim2.new(0, 650, 0, 380)}):Play()
+		end
+	end
+
+	UIS.InputBegan:Connect(function(input, gpe)
+		if gpe then return end
+		if input.KeyCode == toggleKey then ToggleMinimize() end
+	end)
+	BtnMin.MouseButton1Click:Connect(function() ClickSound:Play() ToggleMinimize() end)
+	FloatingBall.MouseButton1Click:Connect(function() ClickSound:Play() ToggleMinimize() end)
+	BtnClose.MouseButton1Click:Connect(function() G:Destroy() end)
+
+	-- ==========================================
+	-- [ TAB SYSTEM ]
+	-- ==========================================
 	function Window:CreateTab(tabName)
 		local TabBtn = Instance.new("TextButton", TabPanel)
 		TabBtn.Size = UDim2.new(1, -10, 0, 35)
@@ -489,10 +524,13 @@ function UniversalLib:CreateWindow(config)
 		TabBtn.MouseButton1Click:Connect(function()
 			ClickSound:Play()
 			for _, child in pairs(ContentPanel:GetChildren()) do if child:IsA("ScrollingFrame") then child.Visible = false end end
+			for _, child in pairs(TabPanel:GetChildren()) do if child:IsA("TextButton") then child.BackgroundColor3 = Color3.fromRGB(20, 20, 25) end end
+			TabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 			TabContainer.Visible = true
 		end)
 
 		local TabElements = {}
+
 		function TabElements:CreateButton(txt, cb)
 			local b = Instance.new("TextButton", TabContainer)
 			b.Size = UDim2.new(1, -10, 0, 38)
@@ -503,7 +541,30 @@ function UniversalLib:CreateWindow(config)
 			Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
 			b.MouseButton1Click:Connect(function() ClickSound:Play(); cb() end)
 		end
-		function TabElements:CreateToggle(txt, def, cb) CreateInternalToggle(TabContainer, txt, def, cb) end
+
+		function TabElements:CreateToggle(txt, def, cb)
+			CreateInternalToggle(TabContainer, txt, def, cb, ClickSound)
+		end
+
+		-- FIXED: ADDED MISSING METHOD
+		function TabElements:CreateTextBox(placeholder, callback)
+			local BoxFrame = Instance.new("Frame", TabContainer)
+			BoxFrame.Size = UDim2.new(1, -10, 0, 40)
+			BoxFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+			Instance.new("UICorner", BoxFrame).CornerRadius = UDim.new(0, 6)
+			local Box = Instance.new("TextBox", BoxFrame)
+			Box.Size = UDim2.new(1, -20, 1, 0)
+			Box.Position = UDim2.new(0, 10, 0, 0)
+			Box.BackgroundTransparency = 1
+			Box.PlaceholderText = placeholder
+			Box.Text = ""
+			Box.TextColor3 = Color3.fromRGB(255, 255, 255)
+			Box.Font = Enum.Font.Gotham
+			Box.TextSize = 13
+			Box.TextXAlignment = Enum.TextXAlignment.Left
+			Box.FocusLost:Connect(function(enter) callback(Box.Text, enter) end)
+		end
+
 		function TabElements:CreateLabel(txt)
 			local l = Instance.new("TextLabel", TabContainer)
 			l.Size = UDim2.new(1, -10, 0, 25)
@@ -513,10 +574,10 @@ function UniversalLib:CreateWindow(config)
 			l.Font = Enum.Font.GothamMedium
 			l.TextXAlignment = Enum.TextXAlignment.Left
 		end
+
 		return TabElements
 	end
 
-	BtnClose.MouseButton1Click:Connect(function() G:Destroy() end)
 	return Window
 end
 
