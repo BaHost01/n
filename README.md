@@ -17,8 +17,16 @@ A modern, secure, and animated UI library designed for Roblox exploits.
   local Lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/BaHost01/n/refs/heads/main/l.lua"))()
   ```
 
-### 2. `MyScripts/1.lua` (Nexus Hub)
+### 2. `MyScripts/1.lua` (Nexus Hub V2.0.0)
 A high-performance multi-game script optimized for **Murder Mystery 2 (MM2)** and **Arsenal**.
+- **V2.0.0 Experimental Upgrades:**
+  - **Fixed God Mode:** Animations now play correctly, and the script properly resets the character when disabled.
+  - **Enhanced Combat:** Silent Aim accuracy improved; Kill Aura range increased (up to 30 studs).
+  - **Experimentals Tab:**
+    - **Reach:** Adjustable hitbox expansion for melee weapons (5-30 studs).
+    - **Knife TP:** Automatically teleports you behind the closest player when swinging your knife.
+    - **Kill All:** Instantly fires stab/hit remotes at every enemy in the server.
+    - **Fling All:** Chaos tool that rapidly teleports to and flings every player.
 - **Universal Features:**
   - **Aimbot Systems:** Camera Lock, Silent Aim (Magic Bullets), TriggerBot, and Team/FFA filters.
   - **Visuals (ESP):** Optimized Box ESP and 3D Highlights.
