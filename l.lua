@@ -2,7 +2,7 @@
 --Version 2.1, February 1999
 
 -- MAIN HOLDER: BaHost01 | #agente0981 (Discord) | cleasantos1994 (Roblox)
--- LICENSE LINK: 
+-- LICENSE LINK: https://raw.githubusercontent.com/BaHost01/n/refs/heads/main/LICENSE
 
 local UniversalLib = {}
 
