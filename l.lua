@@ -1,3 +1,9 @@
+-- UNDER: GNU LESSER GENERAL PUBLIC LICENSE
+--Version 2.1, February 1999
+
+-- MAIN HOLDER: BaHost01 | #agente0981 (Discord) | cleasantos1994 (Roblox)
+-- LICENSE LINK: 
+
 local UniversalLib = {}
 
 -- ==========================================
