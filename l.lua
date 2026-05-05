@@ -22,7 +22,7 @@ UniversalLib.Config = {
 }
 
 -- ==========================================
--- [ UTILITIES & IDENTITY PROTECTION ]
+-- [ UTILITIES & SECURITY ]
 -- ==========================================
 local function Log(message)
 	if UniversalLib.Config.DebugLogging then
@@ -30,14 +30,49 @@ local function Log(message)
 	end
 end
 
--- Gerador de Identidade Falsa
-local charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-local fakeUsername = ""
-for i = 1, 10 do
-	local rand = math.random(1, #charset)
-	fakeUsername = fakeUsername .. string.sub(charset, rand, rand)
+-- Base64 Utility for Key Obfuscation
+local b64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local function b64encode(data)
+	return ((data:gsub(".", function(x) 
+		local r,b="",x:byte()
+		for i=8,1,-1 do r=r..(b%2^i-b%2^(i-1)>0 and "1" or "0") end
+		return r;
+	end).."0000"):gsub("%d%d%d?%d?%d?%d?", function(x)
+		if (#x < 6) then return "" end
+		local c=0
+		for i=1,6 do c=c+(x:sub(i,i)=="1" and 2^(6-i) or 0) end
+		return b64chars:sub(c+1,c+1)
+	end)..({ "", "==", "=" })[#data%3+1])
 end
-local fakeUserId = tostring(math.random(100000000, 999999999))
+
+local function b64decode(data)
+	data = string.gsub(data, "[^" .. b64chars .. "=]", "")
+	return (data:gsub(".", function(x)
+		if (x == "=") then return "" end
+		local r,f="",(b64chars:find(x)-1)
+		for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and "1" or "0") end
+		return r;
+	end):gsub("%d%d%d?%d?%d?%d?%d?%d?", function(x)
+		if (#x < 8) then return "" end
+		local c=0
+		for i=1,8 do c=c+(x:sub(i,i)=="1" and 2^(8-i) or 0) end
+		return string.char(c)
+	end))
+end
+
+-- Gerador de Identidade Realista
+local realUsernames = {
+    "ShadowSlayer_99", "CoolKitten2024", "EliteGamer_Pro", "MysticWolf", "DragonRider",
+    "SwiftBlade", "FrostByte", "SolarFlare", "NeonNinja", "NightOwl",
+    "BlazeRunner", "StormChaser", "VoidWalker", "LunarEclipse", "CrimsonViper",
+    "IronKnight", "GhostHunter", "CyberPunk_01", "PixelWarrior", "AquaMarine"
+}
+local function GenerateRealisticIdentity()
+    local name = realUsernames[math.random(1, #realUsernames)] .. tostring(math.random(10, 999))
+    local id = tostring(math.random(10000000, 999999999))
+    return name, id
+end
+local fakeUsername, fakeUserId = GenerateRealisticIdentity()
 
 -- [ CONFIGURATION FUNCTIONS ]
 function UniversalLib.SetService(name) UniversalLib.Config.Service = name; Log("Service set: " .. tostring(name)) end
@@ -56,12 +91,12 @@ end
 
 local function WriteKeyToFile(key)
 	if UniversalLib.Config.AutoSaveKey and writefile then
-		pcall(function() writefile(GetKeyFileName(), key) end)
+		pcall(function() writefile(GetKeyFileName(), b64encode(key)) end)
 	end
 end
 
 -- ==========================================
--- [ ROBLOX SERVICES ]
+-- [ ROBLOX SERVICES & UTILS ]
 -- ==========================================
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -73,6 +108,35 @@ local RunService = game:GetService("RunService")
 local isMobile = UIS.TouchEnabled and not UIS.MouseEnabled
 local deviceIcon = isMobile and "📱 Mobile" or "💻 PC"
 local LocalPlayer = Players.LocalPlayer
+
+local function MakeDraggable(gui, dragPart)
+	local dragging, dragInput, dragStart, startPos
+	dragPart = dragPart or gui
+
+	dragPart.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			dragStart = input.Position
+			startPos = gui.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then dragging = false end
+			end)
+		end
+	end)
+
+	dragPart.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+			dragInput = input
+		end
+	end)
+
+	UIS.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			local delta = input.Position - dragStart
+			gui.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
+end
 
 local function ApplyGradient(parent, color1, color2)
 	local grad = Instance.new("UIGradient")
@@ -108,7 +172,10 @@ function UniversalLib.StartUserScript(callback)
 	if UniversalLib.Config.AutoLoadKey and isfile and readfile then
 		local fileName = GetKeyFileName()
 		if isfile(fileName) then
-			local success, savedKey = pcall(function() return readfile(fileName) end)
+			local success, savedKey = pcall(function() 
+				local raw = readfile(fileName)
+				return b64decode(raw)
+			end)
 			if success and savedKey ~= "" then
 				local checkOk, res = pcall(function() return J.check_key(savedKey) end)
 				if checkOk and res and res.valid then
@@ -119,7 +186,7 @@ function UniversalLib.StartUserScript(callback)
 		end
 	end
 
-	local guiName = "PremiumKeyUI_Gateway"
+	local guiName = GenerateRandomString(15)
 	if CoreGui:FindFirstChild(guiName) then CoreGui[guiName]:Destroy() end
 
 	local G = Instance.new("ScreenGui", (pcall(gethui) and gethui() or CoreGui))
@@ -134,6 +201,8 @@ function UniversalLib.StartUserScript(callback)
 	MainCanvas.Size = isMobile and UDim2.new(0, 500, 0, 320) or UDim2.new(0, 650, 0, 380)
 	MainCanvas.Position = UDim2.new(0.5, 0, 0.5, 0)
 	MainCanvas.BackgroundTransparency = 1
+	MakeDraggable(MainCanvas)
+
 
 	local Main = Instance.new("Frame", MainCanvas)
 	Main.Size = UDim2.new(1, 0, 1, 0)
@@ -214,15 +283,21 @@ end
 function UniversalLib:CreateWindow(config)
 	config = config or {}
 	local title = config.Title or "HUB"
-	local subtitle = config.Subtitle or "Universal"
 	local toggleKey = config.ToggleKey or Enum.KeyCode.RightShift
 
-	local Window = { ActiveTab = nil, Minimized = false, SettingsOpen = false, RGBConnection = nil, isFocused = true }
+	local Window = { ActiveTab = nil, Tabs = {}, Minimized = false, SettingsOpen = false, RGBConnection = nil, isFocused = true }
 
 	local G = Instance.new("ScreenGui", (pcall(gethui) and gethui() or CoreGui))
-	G.Name = "UniversalHub_" .. title
+	G.Name = GenerateRandomString(15)
 	G.ResetOnSpawn = false
 	G.IgnoreGuiInset = true
+
+	-- Basic Anti-Tamper
+	G.AncestryChanged:Connect(function(_, parent)
+		if not parent and G then
+			warn("[UniversalLib] UI Tamper Detected.")
+		end
+	end)
 
 	local ClickSound = CreateSound(G, "140387697208266", 0.45)
 
@@ -231,6 +306,7 @@ function UniversalLib:CreateWindow(config)
 	MainCanvas.Size = isMobile and UDim2.new(0, 500, 0, 320) or UDim2.new(0, 650, 0, 380)
 	MainCanvas.Position = UDim2.new(0.5, 0, 0.5, 0)
 	MainCanvas.BackgroundTransparency = 1
+	MakeDraggable(MainCanvas)
 
 	local Main = Instance.new("Frame", MainCanvas)
 	Main.Size = UDim2.new(1, 0, 1, 0)
@@ -256,7 +332,6 @@ function UniversalLib:CreateWindow(config)
 	TitleText.TextColor3 = Color3.new(1, 1, 1)
 	TitleText.TextXAlignment = Enum.TextXAlignment.Left
 
-	-- Lógica de Ofuscação Automática
 	local function UpdateTitle()
 		if UniversalLib.Config.StreamerMode or not Window.isFocused then
 			TitleText.Text = title .. " <font color='rgb(150,150,150)'>| " .. fakeUsername .. " | " .. deviceIcon .. "</font>"
@@ -282,8 +357,10 @@ function UniversalLib:CreateWindow(config)
 	TabPanel.Position = UDim2.new(0, 0, 0, Top.Size.Y.Offset)
 	TabPanel.BackgroundTransparency = 1
 	TabPanel.ScrollBarThickness = 0
-	Instance.new("UIListLayout", TabPanel).Padding = UDim.new(0, 5)
-	TabPanel.UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	local TabList = Instance.new("UIListLayout", TabPanel)
+	TabList.Padding = UDim.new(0, 5)
+	TabList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	Instance.new("UIPadding", TabPanel).PaddingTop = UDim.new(0, 10)
 
 	local ContentPanel = Instance.new("Frame", Main)
 	ContentPanel.Size = UDim2.new(0.7, 0, 1, -Top.Size.Y.Offset)
@@ -298,11 +375,11 @@ function UniversalLib:CreateWindow(config)
 	SettingsOverlay.ScrollBarThickness = 2
 	Instance.new("UICorner", SettingsOverlay).CornerRadius = UDim.new(0, 8)
 	Instance.new("UIStroke", SettingsOverlay).Color = Color3.fromRGB(60, 60, 70)
-	Instance.new("UIListLayout", SettingsOverlay).Padding = UDim.new(0, 8)
-	SettingsOverlay.UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	local SetList = Instance.new("UIListLayout", SettingsOverlay)
+	SetList.Padding = UDim.new(0, 8)
+	SetList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	Instance.new("UIPadding", SettingsOverlay).PaddingTop = UDim.new(0, 10)
 
-	-- API de Settings Customizadas
 	function Window:AddSettingToggle(text, default, callback)
 		local TglFrame = Instance.new("Frame", SettingsOverlay)
 		TglFrame.Size = UDim2.new(1, -20, 0, 35)
@@ -346,7 +423,6 @@ function UniversalLib:CreateWindow(config)
 		end)
 	end
 
-	-- Adicionar Streamer Mode nas Configurações
 	Window:AddSettingToggle("Streamer Mode", UniversalLib.Config.StreamerMode, function(s)
 		UniversalLib.Config.StreamerMode = s
 		UpdateTitle()
@@ -382,40 +458,69 @@ function UniversalLib:CreateWindow(config)
 		TabBtn.TextSize = 13
 		Instance.new("UICorner", TabBtn).CornerRadius = UDim.new(0, 6)
 
-		local TabContainer = Instance.new("ScrollingFrame", ContentPanel)
+		local TabContainer = Instance.new("CanvasGroup", ContentPanel)
 		TabContainer.Size = UDim2.new(1, -20, 1, -20)
 		TabContainer.Position = UDim2.new(0, 10, 0, 10)
 		TabContainer.BackgroundTransparency = 1
-		TabContainer.ScrollBarThickness = 2
 		TabContainer.Visible = false
-		local ContainerList = Instance.new("UIListLayout", TabContainer)
+		TabContainer.GroupTransparency = 1
+
+		local Scroll = Instance.new("ScrollingFrame", TabContainer)
+		Scroll.Size = UDim2.new(1, 0, 1, 0)
+		Scroll.BackgroundTransparency = 1
+		Scroll.ScrollBarThickness = 2
+		local ContainerList = Instance.new("UIListLayout", Scroll)
 		ContainerList.Padding = UDim.new(0, 8)
 		ContainerList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-			TabContainer.CanvasSize = UDim2.new(0, 0, 0, ContainerList.AbsoluteContentSize.Y + 10)
+			Scroll.CanvasSize = UDim2.new(0, 0, 0, ContainerList.AbsoluteContentSize.Y + 10)
 		end)
 
-		if not Window.ActiveTab then Window.ActiveTab = TabContainer; TabContainer.Visible = true; TabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45) end
+		if not Window.ActiveTab then 
+			Window.ActiveTab = TabContainer
+			TabContainer.Visible = true
+			TabContainer.GroupTransparency = 0
+			TabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45) 
+			TabBtn.TextColor3 = Color3.new(1,1,1)
+		end
 
 		TabBtn.MouseButton1Click:Connect(function()
+			if Window.ActiveTab == TabContainer then return end
 			ClickSound:Play()
-			for _, child in pairs(ContentPanel:GetChildren()) do if child:IsA("ScrollingFrame") then child.Visible = false end end
-			for _, child in pairs(TabPanel:GetChildren()) do if child:IsA("TextButton") then child.BackgroundColor3 = Color3.fromRGB(20, 20, 25) end end
-			TabBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+			
+			if Window.ActiveTab then
+				local oldTab = Window.ActiveTab
+				TweenService:Create(oldTab, TweenInfo.new(0.3), {GroupTransparency = 1}):Play()
+				task.delay(0.3, function() oldTab.Visible = false end)
+			end
+
+			for _, child in pairs(TabPanel:GetChildren()) do 
+				if child:IsA("TextButton") then 
+					TweenService:Create(child, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(20, 20, 25), TextColor3 = Color3.fromRGB(180, 180, 180)}):Play()
+				end 
+			end
+
+			Window.ActiveTab = TabContainer
 			TabContainer.Visible = true
+			TweenService:Create(TabContainer, TweenInfo.new(0.3), {GroupTransparency = 0}):Play()
+			TweenService:Create(TabBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 45), TextColor3 = Color3.new(1, 1, 1)}):Play()
 		end)
 
 		local TabElements = {}
+
 		function TabElements:CreateButton(txt, cb)
-			local b = Instance.new("TextButton", TabContainer)
+			local b = Instance.new("TextButton", Scroll)
 			b.Size = UDim2.new(1, -10, 0, 38)
 			b.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 			b.Text = txt; b.TextColor3 = Color3.new(1,1,1); b.Font = Enum.Font.GothamBold
 			Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+			
+			b.MouseEnter:Connect(function() TweenService:Create(b, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 55)}):Play() end)
+			b.MouseLeave:Connect(function() TweenService:Create(b, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(35, 35, 40)}):Play() end)
 			b.MouseButton1Click:Connect(function() ClickSound:Play(); cb() end)
 		end
 		
 		function TabElements:CreateToggle(text, default, callback)
-			local TglFrame = Instance.new("Frame", TabContainer)
+			local TglFrame = Instance.new("Frame", Scroll)
 			TglFrame.Size = UDim2.new(1, -10, 0, 35)
 			TglFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
 			Instance.new("UICorner", TglFrame).CornerRadius = UDim.new(0, 6)
@@ -443,8 +548,128 @@ function UniversalLib:CreateWindow(config)
 			end)
 		end
 
+		function TabElements:CreateSlider(text, min, max, default, callback)
+			local SFrame = Instance.new("Frame", Scroll)
+			SFrame.Size = UDim2.new(1, -10, 0, 45)
+			SFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+			Instance.new("UICorner", SFrame).CornerRadius = UDim.new(0, 6)
+
+			local SText = Instance.new("TextLabel", SFrame)
+			SText.Size = UDim2.new(1, -20, 0, 20); SText.Position = UDim2.new(0, 10, 0, 5)
+			SText.BackgroundTransparency = 1; SText.Text = text .. ": " .. default; SText.TextColor3 = Color3.fromRGB(200, 200, 200)
+			SText.Font = Enum.Font.GothamMedium; SText.TextSize = 12; SText.TextXAlignment = "Left"
+
+			local SBar = Instance.new("Frame", SFrame)
+			SBar.Size = UDim2.new(1, -20, 0, 6); SBar.Position = UDim2.new(0, 10, 0, 30)
+			SBar.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+			Instance.new("UICorner", SBar).CornerRadius = UDim.new(1, 0)
+
+			local SFill = Instance.new("Frame", SBar)
+			local percent = (default - min) / (max - min)
+			SFill.Size = UDim2.new(percent, 0, 1, 0)
+			SFill.BackgroundColor3 = Color3.fromRGB(114, 137, 218)
+			Instance.new("UICorner", SFill).CornerRadius = UDim.new(1, 0)
+
+			local dragging = false
+			local function UpdateSlider(input)
+				local pos = math.clamp((input.Position.X - SBar.AbsolutePosition.X) / SBar.AbsoluteSize.X, 0, 1)
+				local val = math.floor(min + (max - min) * pos)
+				SFill.Size = UDim2.new(pos, 0, 1, 0)
+				SText.Text = text .. ": " .. val
+				callback(val)
+			end
+
+			SBar.InputBegan:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+					dragging = true
+					UpdateSlider(input)
+				end
+			end)
+
+			UIS.InputEnded:Connect(function(input)
+				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+					dragging = false
+				end
+			end)
+
+			UIS.InputChanged:Connect(function(input)
+				if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+					UpdateSlider(input)
+				end
+			end)
+		end
+
+		function TabElements:CreateDropdown(text, options, default, callback)
+			local DFrame = Instance.new("Frame", Scroll)
+			DFrame.Size = UDim2.new(1, -10, 0, 35)
+			DFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+			DFrame.ClipsDescendants = true
+			Instance.new("UICorner", DFrame).CornerRadius = UDim.new(0, 6)
+
+			local DBtn = Instance.new("TextButton", DFrame)
+			DBtn.Size = UDim2.new(1, 0, 0, 35)
+			DBtn.BackgroundTransparency = 1; DBtn.Text = text .. ": " .. (default or "None")
+			DBtn.TextColor3 = Color3.fromRGB(200, 200, 200); DBtn.Font = Enum.Font.GothamMedium; DBtn.TextSize = 12
+
+			local DScroll = Instance.new("ScrollingFrame", DFrame)
+			DScroll.Size = UDim2.new(1, 0, 0, 100); DScroll.Position = UDim2.new(0, 0, 0, 35)
+			DScroll.BackgroundTransparency = 1; DScroll.ScrollBarThickness = 2
+			local DList = Instance.new("UIListLayout", DScroll)
+
+			local open = false
+			DBtn.MouseButton1Click:Connect(function()
+				open = not open
+				TweenService:Create(DFrame, TweenInfo.new(0.3), {Size = open and UDim2.new(1, -10, 0, 140) or UDim2.new(1, -10, 0, 35)}):Play()
+			end)
+
+			for _, opt in pairs(options) do
+				local o = Instance.new("TextButton", DScroll)
+				o.Size = UDim2.new(1, 0, 0, 30); o.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+				o.Text = opt; o.TextColor3 = Color3.fromRGB(180, 180, 180); o.Font = Enum.Font.Gotham; o.TextSize = 12
+				o.MouseButton1Click:Connect(function()
+					DBtn.Text = text .. ": " .. opt
+					callback(opt)
+					open = false
+					TweenService:Create(DFrame, TweenInfo.new(0.3), {Size = UDim2.new(1, -10, 0, 35)}):Play()
+				end)
+			end
+		end
+
+		function TabElements:CreateKeybind(text, default, callback)
+			local KFrame = Instance.new("Frame", Scroll)
+			KFrame.Size = UDim2.new(1, -10, 0, 35)
+			KFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+			Instance.new("UICorner", KFrame).CornerRadius = UDim.new(0, 6)
+
+			local KText = Instance.new("TextLabel", KFrame)
+			KText.Size = UDim2.new(0.7, 0, 1, 0); KText.Position = UDim2.new(0, 10, 0, 0)
+			KText.BackgroundTransparency = 1; KText.Text = text; KText.TextColor3 = Color3.fromRGB(200, 200, 200)
+			KText.Font = Enum.Font.GothamMedium; KText.TextSize = 12; KText.TextXAlignment = "Left"
+
+			local KBtn = Instance.new("TextButton", KFrame)
+			KBtn.Size = UDim2.new(0, 80, 0, 25); KBtn.Position = UDim2.new(1, -90, 0.5, -12)
+			KBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+			KBtn.Text = default and default.Name or "None"
+			KBtn.TextColor3 = Color3.new(1, 1, 1); KBtn.Font = Enum.Font.GothamBold; KBtn.TextSize = 11
+			Instance.new("UICorner", KBtn).CornerRadius = UDim.new(0, 4)
+
+			local binding = false
+			KBtn.MouseButton1Click:Connect(function()
+				binding = true
+				KBtn.Text = "..."
+			end)
+
+			UIS.InputBegan:Connect(function(input)
+				if binding and input.UserInputType == Enum.UserInputType.Keyboard then
+					binding = false
+					KBtn.Text = input.KeyCode.Name
+					callback(input.KeyCode)
+				end
+			end)
+		end
+
 		function TabElements:CreateTextBox(placeholder, callback)
-			local BoxFrame = Instance.new("Frame", TabContainer)
+			local BoxFrame = Instance.new("Frame", Scroll)
 			BoxFrame.Size = UDim2.new(1, -10, 0, 40)
 			BoxFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 			Instance.new("UICorner", BoxFrame).CornerRadius = UDim.new(0, 6)
@@ -456,7 +681,7 @@ function UniversalLib:CreateWindow(config)
 		end
 
 		function TabElements:CreateLabel(txt)
-			local l = Instance.new("TextLabel", TabContainer)
+			local l = Instance.new("TextLabel", Scroll)
 			l.Size = UDim2.new(1, -10, 0, 25); l.BackgroundTransparency = 1; l.Text = txt
 			l.TextColor3 = Color3.fromRGB(200, 200, 200); l.Font = Enum.Font.GothamMedium; l.TextXAlignment = "Left"
 		end
